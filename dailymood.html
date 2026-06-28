@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日心情文章</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --card: #fafaf8;
+    --text: #1c1c1a;
+    --muted: #7a7a76;
+    --border: rgba(0,0,0,0.09);
+    --border-mid: rgba(0,0,0,0.15);
+    --ink: #111110;
+    --accent: #3d5a99;
+    --accent-light: #e8edf7;
+    --accent-text: #2a3f6f;
+    --radius: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #181817;
+      --surface: #222221;
+      --card: #2a2a28;
+      --text: #eeede8;
+      --muted: #8a8a84;
+      --border: rgba(255,255,255,0.07);
+      --border-mid: rgba(255,255,255,0.13);
+      --ink: #111110;
+      --accent: #5b79c0;
+      --accent-light: #1e2540;
+      --accent-text: #a0b4e0;
+    }
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Helvetica Neue", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif;
+    line-height: 1.6;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 3rem 1.25rem 4rem;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .date-label {
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .5rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    color: var(--text);
+  }
+
+  .subtitle {
+    font-size: .85rem;
+    color: var(--muted);
+    margin-top: .3rem;
+  }
+
+  .main {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* Mode toggle */
+  .mode-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border-mid);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: .875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+  }
+
+  .mode-btn:hover { color: var(--accent-text); border-color: var(--accent); }
+
+  .mode-btn.active {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+
+  /* Input panel */
+  .input-panel {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .input-panel.show { display: flex; }
+
+  textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 11px 13px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border-mid);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: .9rem;
+    line-height: 1.65;
+    resize: vertical;
+    outline: none;
+    transition: border-color .13s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+
+  .char-hint {
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .char-hint.warn { color: #c97a00; }
+  .char-hint.over { color: #c93030; font-weight: 600; }
+
+  /* Mood selector */
+  .mood-label {
+    font-size: 12px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .mood-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .mood-chip {
+    padding: 5px 13px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border-mid);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .13s;
+    user-select: none;
+  }
+
+  .mood-chip:hover { border-color: var(--accent); color: var(--accent-text); }
+
+  .mood-chip.on {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+
+  /* Generate button */
+  .gen-btn {
+    width: 100%;
+    height: 46px;
+    border-radius: var(--radius);
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: -.01em;
+    transition: opacity .15s, transform .1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .gen-btn:hover { opacity: .86; }
+  .gen-btn:active { transform: scale(.98); }
+  .gen-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* Error */
+  .err-msg {
+    padding: .7rem 1rem;
+    border-radius: var(--radius);
+    background: #fef2f2;
+    border: 0.5px solid #fca5a5;
+    color: #b91c1c;
+    font-size: .85rem;
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .err-msg { background: #2d1b1b; border-color: #7f1d1d; color: #fca5a5; }
+  }
+
+  /* ── The Card ── */
+  .card-wrap {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card-wrap.show { display: flex; }
+
+  .article-card {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #ffffff;
+    border: 1.5px solid #d0d0cc;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .article-text {
+    color: #000000;
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 2;
+    text-align: center;
+    letter-spacing: .04em;
+    font-family: "Georgia", "Times New Roman", "Songti TC", serif;
+  }
+
+  .article-text.loading {
+    color: #bbb;
+    font-size: 1rem;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    animation: pulse 1.4s infinite ease-in-out;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: .5; }
+    50% { opacity: 1; }
+  }
+
+  .progress-line {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: #aaa;
+    border-radius: 2px;
+    animation: grow 1.8s infinite ease-in-out;
+    display: none;
+  }
+
+  .progress-line.on { display: block; }
+
+  @keyframes grow {
+    0% { width: 0; opacity: 1; }
+    80% { width: 90%; opacity: 1; }
+    100% { width: 100%; opacity: 0; }
+  }
+
+  /* Card footer */
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .word-count {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 7px;
+  }
+
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 13px;
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border-mid);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: all .13s;
+  }
+
+  .action-btn:hover { border-color: var(--accent); color: var(--accent-text); }
+  .action-btn.copied { background: #edfaf3; border-color: #34a868; color: #1e6e3f; }
+
+  @media (prefers-color-scheme: dark) {
+    .action-btn.copied { background: #1a2e22; border-color: #166534; color: #86efac; }
+  }
+
+  /* Divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 12px;
+    margin: 2px 0;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 0.5px;
+    background: var(--border-mid);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="date-label" id="dateLabel"></div>
+  <h1>每日心情文章</h1>
+  <p class="subtitle">10–30 個字，記錄今天的感受</p>
+</header>
+
+<div class="main">
+
+  <!-- Mode toggle -->
+  <div class="mode-row">
+    <div class="mode-btn active" id="modeAI" onclick="setMode('ai')">✦ 由 AI 產生</div>
+    <div class="mode-btn" id="modeMe" onclick="setMode('me')">✏️ 我自己輸入</div>
+  </div>
+
+  <!-- AI mode: mood selector -->
+  <div id="aiPanel">
+    <div class="mood-label" style="margin-bottom:6px">今天的心情</div>
+    <div class="mood-row" id="moods">
+      <span class="mood-chip on" data-m="平靜">😌 平靜</span>
+      <span class="mood-chip" data-m="開心">😊 開心</span>
+      <span class="mood-chip" data-m="感恩">🙏 感恩</span>
+      <span class="mood-chip" data-m="疲憊">😮‍💨 疲憊</span>
+      <span class="mood-chip" data-m="思念">🌙 思念</span>
+      <span class="mood-chip" data-m="期待">✨ 期待</span>
+      <span class="mood-chip" data-m="感慨">🍂 感慨</span>
+      <span class="mood-chip" data-m="溫柔">🌸 溫柔</span>
+    </div>
+  </div>
+
+  <!-- Manual input mode -->
+  <div class="input-panel" id="mePanel">
+    <textarea id="userText" placeholder="在這裡寫下你今天的心情…（10–30 個字）" maxlength="60" oninput="checkLen()"></textarea>
+    <div class="char-hint" id="charHint">0 / 30 字</div>
+  </div>
+
+  <div class="err-msg" id="errMsg"></div>
+
+  <button class="gen-btn" id="genBtn" onclick="go()">
+    <span id="btnIcon">✦</span>
+    <span id="btnTxt">產生文章</span>
+  </button>
+
+  <!-- Result card -->
+  <div class="card-wrap" id="cardWrap">
+    <div class="divider">今日文章</div>
+    <div class="article-card" id="articleCard">
+      <div class="article-text" id="articleText"></div>
+      <div class="progress-line" id="progLine"></div>
+    </div>
+    <div class="card-footer">
+      <span class="word-count" id="wordCount"></span>
+      <div class="card-actions">
+        <button class="action-btn" id="copyBtn" onclick="doCopy()">📋 複製文字</button>
+        <button class="action-btn" onclick="go()">↺ 重新產生</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let mode = 'ai';
+  let mood = '平靜';
+
+  // Date
+  const now = new Date();
+  const days = ['日','一','二','三','四','五','六'];
+  document.getElementById('dateLabel').textContent =
+    `${now.getFullYear()} 年 ${now.getMonth()+1} 月 ${now.getDate()} 日 · 星期${days[now.getDay()]}`;
+
+  // Mode
+  function setMode(m) {
+    mode = m;
+    document.getElementById('modeAI').classList.toggle('active', m === 'ai');
+    document.getElementById('modeMe').classList.toggle('active', m === 'me');
+    document.getElementById('aiPanel').style.display = m === 'ai' ? 'block' : 'none';
+    document.getElementById('mePanel').classList.toggle('show', m === 'me');
+    document.getElementById('btnTxt').textContent = m === 'ai' ? '產生文章' : '放入卡片';
+    document.getElementById('btnIcon').textContent = m === 'ai' ? '✦' : '→';
+    document.getElementById('cardWrap').classList.remove('show');
+    document.getElementById('errMsg').style.display = 'none';
+  }
+
+  // Mood chips
+  document.querySelectorAll('.mood-chip').forEach(c => {
+    c.onclick = () => {
+      document.querySelectorAll('.mood-chip').forEach(x => x.classList.remove('on'));
+      c.classList.add('on');
+      mood = c.dataset.m;
+    };
+  });
+
+  // Char count for manual input
+  function checkLen() {
+    const v = document.getElementById('userText').value;
+    const len = v.replace(/\s/g,'').length;
+    const hint = document.getElementById('charHint');
+    hint.textContent = `${len} / 30 字`;
+    hint.className = 'char-hint';
+    if (len > 25) hint.className += ' warn';
+    if (len > 30) hint.className += ' over';
+  }
+
+  // Main action
+  async function go() {
+    const err = document.getElementById('errMsg');
+    err.style.display = 'none';
+
+    if (mode === 'me') {
+      const raw = document.getElementById('userText').value.trim();
+      const len = raw.replace(/\s/g,'').length;
+      if (len < 5) {
+        showErr('請輸入至少 5 個字的心情文字。');
+        return;
+      }
+      if (len > 35) {
+        showErr('文字超過 30 個字了，請稍微縮短一下。');
+        return;
+      }
+      showCard(raw);
+      return;
+    }
+
+    // AI mode
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    document.getElementById('btnIcon').textContent = '⏳';
+    document.getElementById('btnTxt').textContent = '產生中…';
+
+    showCard(null); // show loading state
+
+    const prompt = `你是一位擅長寫短文的創作者。請為「${mood}」這個心情寫一篇每日心情短文。
+
+規則：
+- 字數嚴格控制在 10–30 個中文字之間（不含標點符號計算）
+- 文字優美、有詩意、帶有畫面感
+- 不要加任何標題、序號、引號或說明
+- 直接輸出文章本文，僅此一篇`;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 200,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error?.message || 'HTTP ' + res.status);
+      }
+
+      const data = await res.json();
+      const text = data.content?.map(b => b.text || '').join('').trim() || '';
+      showCard(text);
+
+    } catch (e) {
+      hideCard();
+      showErr('產生失敗：' + e.message);
+    }
+
+    btn.disabled = false;
+    document.getElementById('btnIcon').textContent = '✦';
+    document.getElementById('btnTxt').textContent = '產生文章';
+  }
+
+  function showCard(text) {
+    const wrap = document.getElementById('cardWrap');
+    const articleText = document.getElementById('articleText');
+    const progLine = document.getElementById('progLine');
+    const wordCount = document.getElementById('wordCount');
+
+    wrap.classList.add('show');
+
+    if (text === null) {
+      articleText.textContent = '正在寫下今天的文字…';
+      articleText.className = 'article-text loading';
+      progLine.classList.add('on');
+      wordCount.textContent = '';
+    } else {
+      articleText.textContent = text;
+      articleText.className = 'article-text';
+      progLine.classList.remove('on');
+      const count = text.replace(/[\s\p{P}]/gu, '').length;
+      wordCount.textContent = `共 ${count} 字`;
+    }
+    document.getElementById('copyBtn').className = 'action-btn';
+    document.getElementById('copyBtn').querySelector ? null : null;
+    const cb = document.getElementById('copyBtn');
+    cb.className = 'action-btn';
+    cb.textContent = '📋 複製文字';
+  }
+
+  function hideCard() {
+    document.getElementById('cardWrap').classList.remove('show');
+    document.getElementById('progLine').classList.remove('on');
+  }
+
+  function showErr(msg) {
+    const el = document.getElementById('errMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  async function doCopy() {
+    const text = document.getElementById('articleText').textContent;
+    if (!text || document.getElementById('articleText').classList.contains('loading')) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      const btn = document.getElementById('copyBtn');
+      btn.className = 'action-btn copied';
+      btn.textContent = '✓ 已複製';
+      setTimeout(() => {
+        btn.className = 'action-btn';
+        btn.textContent = '📋 複製文字';
+      }, 2000);
+    } catch(e) {}
+  }
+
+  // Enter key in textarea
+  document.getElementById('userText').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); }
+  });
+</script>
+</body>
+</html>
